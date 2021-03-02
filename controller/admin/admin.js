@@ -3,8 +3,9 @@ const AdminModel = require("../../models/admin/adminModel");
 class Admin {
   constructor() {}
   async Login(req, res, next) {
-    const { username, password } = req.body;
 
+    const { username, password } = req.body;
+    
     AdminModel.findOne({ username }, (err, doc) => {
       if (err)
         return res.send({

@@ -1,3 +1,5 @@
 # Express-mongoDB-study
-## npm install  
-## npm run dev
+##  安装依赖
+### npm install
+## 运行服务
+### npm run dev

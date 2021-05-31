@@ -1,60 +1,44 @@
-const createError = require("http-errors");
-const express = require("express");
-const path = require("path");
-const cookieParser = require("cookie-parser");
-const logger = require("morgan");
-const db = require("./mongodb/db");
+// eslint-disable-next-line no-unused-vars
+import db from './src/mongodb/db.js' //连接数据库
+import express from 'express'
+import router from './src/routes/index'
+import cors from 'cors'
+import path from 'path'
+import setSwagger from './src/swagger'
+import token from './src/middlewares/checkToken'
+import http from 'http'
+import socket from 'socket.io'
 
-const indexRouter = require("./routes/index");
-const usersRouter = require("./routes/admin");
+const app = express()
 
-const app = express();
+setSwagger(app)
+const PORT = process.env.PORT || 3000
+// 先允许跨域
+app.use(cors())
+// 防止 req.body 获取不到值
+app.use(express.json())
+app.use(express.urlencoded({ extended: false }))
+app.use(token.checkToken)
 // 跨域
-app.all("*", (req, res, next) => {
-  const { origin, Origin, referer, Referer } = req.headers;
-  const allowOrigin = origin || Origin || referer || Referer || "*";
-  res.header("Access-Control-Allow-Origin", allowOrigin);
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With"
-  );
-  res.header("Access-Control-Allow-Methods", "PUT,POST,GET,DELETE,OPTIONS");
-  res.header("Access-Control-Allow-Credentials", true); //可以带cookies
-  res.header("X-Powered-By", "Express");
-  if (req.method == "OPTIONS") {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
+// 路由
+router(app)
 
-// view engine setup
-app.set("views", path.join(__dirname, "views"));
-app.set("view engine", "pug");
+app
+  .use(express.static(path.join(__dirname, 'public')))
+  .set('views', path.join(__dirname, 'views'))
+  .set('view engine', 'ejs')
+  .get('/', (req, res) => res.render('pages/index'))
 
-app.use(logger("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public")));
+const httpServer = http.createServer(app)
+const io  = socket(httpServer, {
+  cors: {
+    origin: 'http://127.0.0.1:5501/index.html',
+    methods: ['GET', 'POST']
+  }})
 
-app.use("/api", indexRouter);
-app.use("/api", usersRouter);
+io.on('connection',(socket)=>{
+  console.log(socket)
+  process.socket = socket
+})
 
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-  next(createError(404));
-});
-
-// error handler
-app.use(function (err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get("env") === "development" ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.render("error");
-});
-
-module.exports = app;
+httpServer.listen(PORT, () => console.log(`Listening on http://127.0.0.1:${PORT}/api-docs`))
